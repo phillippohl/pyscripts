@@ -3,67 +3,58 @@ Created on 26.12.2012
 
 @author: Phillipp
 '''
-import easygui,os,time
+import easygui,os,shutil,sys
+from datetime import date
 
-def get_input():
-    dir_path = easygui.diropenbox("Choose directory")
-    
-    new_file_name = easygui.enterbox("Please enter the new name convention for the files' naming.", "Name convention")
-    if new_file_name == None:
-        sys.exit(0)
-    if new_file_name == "":
-        while(new_file_name == ""):
-            easygui.msgbox("You did not specified a name convention for the files' naming. Please do so!", "Attention!")
-            new_file_name = easygui.enterbox("Please enter the new name convention for the files' naming.", "Name convention")
-        
-    numeration_type = easygui.choicebox("What kind of numeration do you prefer?", "Numeration type", ["Increasing numbers", "Creation date", "Modification date"])
-    if numeration_type == None:
-        sys.exit(0)
-    else:
-        print("Selected numeration type: " + numeration_type)
-        rename_files(dir_path, new_file_name, numeration_type)
-    
-def rename_files(dir_path, new_file_name, numeration_type):
-    counter = 0
-    print("Initial files within path:\n" + "  > " + dir_path + "\n")
-    for file in os.listdir(dir_path):
-        print(file)
-        
-        split_helper = file.split(".")
-        file_type = split_helper[1]
-        
-        src_file = dir_path + "\\" + file
-        dst_file = dir_path + "\\" + new_file_name
+now = date.today()
+SRC_PATH = r"C:\Users\Phillipp\Programing\workspace"
+DST_PATH = r"E:\workspace"
 
-        if numeration_type == "Increasing numbers":
-            counter += 1
-            dst_file += str(counter) + "." + file_type
-            
-        elif numeration_type == "Creation date":
-            time_helper = time.ctime(os.path.getctime(src_file))
-            time_helper = time.strftime("%Y %m %d %M %S")
-            time_helper = time_helper.replace(" ", "_")
-            dst_file += time_helper + "." + file_type
+def checksubdirectory(path):
+    try:
+        #print(os.listdir(path))
+        return True
+    except IOError as err:
+        print(path + " has no subdirectories anymore!")
+        return False
 
-        elif numeration_type == "Modification date":
-            time_helper = time.ctime(os.path.getmtime(src_file)) + "." + file_type
-            time_helper = time.strftime("%Y%M%d")
-            time_helper = time_helper.replace(" ", "_")
-            dst_file += time_helper + "." + file_type
-            while(os.path.exists(dst_file) == True):
-                i = 1
-                dst_file += "_" + str(i)
+def copyworkspace(src, dst):
+    for dir in os.listdir(src):
+        src_dir = src + '\\' + dir
+        dst_dir = dst + '\\' + dir
+
+        if checksubdirectory(src_dir) == False:
+            shutil.copy(src_dir, dst_dir)
         else:
-            print("Wrong or unsupported numeration type!")
-            sys.exit(0)
-        
-        os.rename(src_file, dst_file)
+            try:       
+                if os.path.exists(src_dir) == False:   # test the existence of src_file
+                    easygui.msgbox("Source directory: " + src_dir + " does not exist!")
+                    sys.exit(0) 
+                            
+                if os.path.exists(dst_dir) == True:    # test the existence of dst_file
+                    if easygui.ccbox(dst_dir + " already exists! Overwriting?", title):
+                        #pass
+                        print("Overwriting " + dst_dir)
+                        shutil.rmtree(dst_dir)
+                    else:
+                        print("Not overwriting " + dst_dir)
+                        continue
 
-    print("\nRenamed files within path:\n" + "  > " + dir_path + "\n")
-    for file in os.listdir(dir_path):
-        print(file)
+                if dir == ".metadata":
+                    print("Directory: " + src + " skipped!")
+                else:                  
+                    shutil.copytree(src_dir, dst_dir) 
+                    print("Directory: " + src + " successfully copied!")
+            except IOError as err:
+                easygui.msgbox("I/O error: {0}".format(err))
+                        
+    easygui.msgbox("Backup executed successfully!")
 
-if easygui.ccbox("You have executed the renaming script.\nDo you want to continue?", "Please Confirm"):
-    get_input()
-else:
-    sys.exit(0)
+if now.strftime("%A") == "Tuesday" or now.strftime("%A") == "Friday":       
+    msg = "Time to backup your eclipse workspace!\nDo you want to continue?\n\nSRC_PATH = " + SRC_PATH + "\nDST_PATH = " + DST_PATH 
+    title = "Please Confirm"
+
+    if easygui.ccbox(msg, title):
+        copyworkspace(SRC_PATH, DST_PATH)
+    else:
+        sys.exit(0)
